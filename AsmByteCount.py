@@ -12,7 +12,7 @@ import string
 
 client = MongoClient('localhost', 27017)
 db = client.Malware
-BASEDIR = "F:/MS_Malware_Classification_Challenge/"
+BASEDIR =  "H:/Malware_Data/"
 
 
 def Read_Data(dir, F_List):
@@ -21,12 +21,12 @@ def Read_Data(dir, F_List):
     print "Total: ", len(F_List), "files"
     for fname in F_List:
         idx += 1
+        if idx % 100 == 0:
+            print 100*float(idx)/len(F_List), "% is done"
         Data = {}
         if AB.find_one({"Id":fname[:-4]}):
             continue
         Data['Id'] = fname[:-4]
-        if idx % 100 == 0 and idx != 0:
-            print 100*float(idx)/len(F_List), "% is done"
         with open(os.path.join(BASEDIR+dir, fname)) as f:
             for line in f:
                 token = line.replace("\n", '')          # delete unnecessary characters
@@ -39,7 +39,6 @@ def Read_Data(dir, F_List):
                 if len(token) < 2:                      # no instruction is contained
                     continue
                 L = 0
-                print token
                 for i in range(1, len(token)):
                     if len(token[i]) != 2:
                         break
@@ -58,7 +57,6 @@ def Read_Data(dir, F_List):
                     Data[str(L)] += 1
                 else:
                     Data[str(L)] = 1
-            sys.exit()
             AB.insert(Data)
 if __name__ == '__main__':
 
@@ -70,7 +68,7 @@ if __name__ == '__main__':
     TrainList = []
     TestList = [ f for f in listdir(BASEDIR+'test') if f.endswith('.asm') ]
 
-    with open('trainLabels.csv', 'rb') as csvfile:  # Read training file list
+    with open('../trainLabels.csv', 'rb') as csvfile:  # Read training file list
         reader = csv.reader(csvfile)
         next(reader, None)
         for row in reader:
