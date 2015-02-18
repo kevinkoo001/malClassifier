@@ -82,5 +82,7 @@ if __name__ == '__main__':
     print "Read Test data and Extract features..."
     test = Read_Data("train", TrainList[:,0])
 
+
+
     sys.exit()
 
