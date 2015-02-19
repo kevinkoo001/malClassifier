@@ -17,12 +17,12 @@ if __name__ == '__main__':
 
     TrainList = []
 
-    TL = db.TrainLabelds
-    with open('trainLabels.csv', 'rb') as csvfile:  # Read Sample file, which has list of files and class
+    TL = db.TrainLabels
+    with open('../trainLabels.csv', 'rb') as csvfile:  # Read Sample file, which has list of files and class
         reader = csv.reader(csvfile)
         next(reader, None)
         for row in reader:
-            TL.insert({"Id":row[0], "Class":row[1]})
+            TL.insert({"Id":row[0], "Class":int(row[1])})
 
     sys.exit()
 
