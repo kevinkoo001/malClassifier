@@ -26,7 +26,3 @@ if __name__ == '__main__':
                 flag = 1
             if count%40 == 0:
                 break
-
-
-
-

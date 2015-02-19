@@ -25,4 +25,3 @@ if __name__ == '__main__':
             TL.insert({"Id":row[0], "Class":int(row[1])})
 
     sys.exit()
-
