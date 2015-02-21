@@ -1,5 +1,4 @@
-__author__ = 'HEEYOUNG'
-
+__author__ = 'Kevin Koo'
 
 import os
 import struct 
@@ -37,6 +36,7 @@ if __name__ == '__main__':
     for f in files:
         if f.endswith('bytes'):
             print "[%5d] Processing %s..." % (index, f)
+            writeRawBinary(f)
             index += 1
             
     print "Done!"
