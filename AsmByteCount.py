@@ -62,12 +62,13 @@ if __name__ == '__main__':
 
     TrainList = []
 
-    AB = db.AsmBytes
+    AB = db.AsmBytesTest
 
 
-    TrainList = []
+    #TrainList = []
     TestList = [ f for f in listdir(BASEDIR+'test') if f.endswith('.asm') ]
 
+    '''
     with open('../trainLabels.csv', 'rb') as csvfile:  # Read training file list
         reader = csv.reader(csvfile)
         next(reader, None)
@@ -76,9 +77,10 @@ if __name__ == '__main__':
             TrainList.append(row)
 
     TrainList = np.array(TrainList)
-
+    '''
     print "Read Test data and Extract features..."
-    test = Read_Data("train", TrainList[:,0])
+    #train = Read_Data("train", TrainList[:,0])
+    test = Read_Data("test", TestList)
 
     sys.exit()
 
