@@ -15,24 +15,20 @@ BASEDIR = "H:/Malware_Data/"
 
 if __name__ == '__main__':
 
-    TrainList = []
+    DI = db.dllInfo
+    TL = db.TrainLabels
 
-    AC = db.AssemCnt
-    AT = db.AssemCntTest
-    AK = db.AssemKeys
-    TL = db.TrainLabelds
 
-    Com = AK.find().distinct("Com")
-    Com_info = {}
-    idx = 0
-    for c in Com:
-        Com_info[c] = idx
-        idx += 1
+    dll_list = []
+    with open('../dll_list.csv', 'rb') as csvfile:
+        reader = csv.reader(csvfile)
+        for row in reader:
+            dll_list.append(row[0])
 
-    '''
-    Train = AC.find(timeout=False)
 
-    TrainFeat = np.zeros((Train.count(), len(Com_info)))
+    Train = DI.find(timeout=False)
+
+    TrainFeat = np.zeros((Train.count(), len(dll_list)))
     TrainLabel = np.zeros((Train.count(), 1))
     idx = 0
     for d in Train:
@@ -43,18 +39,20 @@ if __name__ == '__main__':
                 Info = TL.find_one({"Id": d[k]})
                 TrainLabel[idx] = Info['Class']
             else:
-                TrainFeat[idx, Com_info[k]] = d[k]
+                TrainFeat[idx, dll_list.index(k)-1] = d[k]
         idx += 1
 
-    np.savetxt('TrFeat.csv', TrainFeat, delimiter=',')  # Save features of training data
-    np.savetxt('TrLabel.csv', TrainLabel, delimiter = ',')
-    '''
-    Test = AT.find(timeout=False)
+    np.savetxt('../TrFeat.csv', TrainFeat, fmt= '%d', delimiter=',')  # Save features of training data
+    np.savetxt('../TrLabel.csv', TrainLabel, delimiter = ',')
 
-    TestFeat = np.zeros((Test.count(), len(Com_info)))
+    DI = db.dllInfoTest
+
+    Test = DI.find(timeout=False)
+
+    TestFeat = np.zeros((Test.count(), len(dll_list)))
     TestID = np.zeros((Test.count(), 1), dtype='str')
     idx = 0
-    fout = open('TtID.csv', 'wb')
+    fout = open('../TtID.csv', 'wb')
     writer = csv.writer(fout)
     for d in Test:
         for k in d.keys():
@@ -63,11 +61,9 @@ if __name__ == '__main__':
             if k == 'Id':
                 writer.writerow([d[k]])
             else:
-                if k not in Com_info.keys():
-                    continue
-                TestFeat[idx, Com_info[k]] = d[k]
+                TestFeat[idx, dll_list.index(k)-1] = d[k]
         idx += 1
 
-    np.savetxt('TtFeat.csv', TestFeat, delimiter=',')
+    np.savetxt('../TtFeat.csv', TestFeat, fmt='%d', delimiter=',')
 
     sys.exit()
