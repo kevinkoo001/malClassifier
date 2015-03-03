@@ -15,11 +15,11 @@ import re
 DEBUG = False
 
 class FeatureCollector:
-    sections = []
-    rawData = []
-    
+
     def __init__(self, targetFile):
         self.targetFile = targetFile
+        self.sections = []
+        self.rawData = []
 
     def getSectionName(self, line):
         return line.split(':')[0]
@@ -77,11 +77,11 @@ class FeatureCollector:
                 except:
                     pass
             else:
-                print "Section Name error!"
+                print ".",
                 
         return cnt
     
-    def readLine(self, start, end):         
+    def readLine(self, start, end):
         for i in range(start, end):
             if len(self.rawData[i]) > 0:
                 try:
@@ -89,7 +89,7 @@ class FeatureCollector:
                     print self.rawData[i]
                 except:
                     pass
-                
+
 
 # parameters: file, delimeter, and header
 def csvImport(csvFile, delim, header=True):
