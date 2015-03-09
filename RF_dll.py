@@ -26,7 +26,7 @@ BASEDIR = "H:/Malware_Data/"
 if __name__ == '__main__':
 
     print "Read features of training instances"
-    suffix = '(SVM)'
+    suffix = '(RF)'
     train = np.loadtxt('../TrFeat.csv', delimiter=',', dtype=int)
 
     training_instances = train
@@ -38,8 +38,7 @@ if __name__ == '__main__':
     test = np.loadtxt('../TtFeat.csv', delimiter=',', dtype=int)
 
     print "Training Sequence"
-    #res, feat_importances = commonLib.RandomForest(training_instances, training_label, test)
-    res, feat_importances = commonLib.KernelSVM(training_instances, training_label, test)
+    res, feat_importances = commonLib.RandomForest(training_instances, training_label, test)
     np.savetxt('../Feat_importances'+suffix+'.csv', feat_importances, delimiter = ',')
 
     TestList = []
