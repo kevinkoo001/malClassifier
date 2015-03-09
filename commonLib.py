@@ -12,7 +12,10 @@ from sklearn.grid_search import GridSearchCV
 from sklearn import svm
 import numpy as np
 import re
+
 DEBUG = False
+winBase = 'E:\\MS_Malware_Classification_Challenge\\'
+nixBase = '/media/Koo/MS_Malware_Classification_Challenge/'
 
 class FeatureCollector:
 
@@ -53,7 +56,6 @@ class FeatureCollector:
                 self.rawData.append(self.lineProcessing(line))
     
     def checkFeature(self, technique, sections=[]):
-        
         cnt = 0
         for line in range(0, len(self.rawData)):
             section = self.getSectionName(self.rawData[line])
@@ -124,6 +126,17 @@ def moveFile(old, newDir, newFile):
     else:
         os.rename(old, newDir + '\\' + newFile)
         #print "%s  ----> %s\\%s" % (old, newDir, newFile)
+
+def getBase(currentSystemInfo):
+    if currentSystemInfo == 'posix':
+        base = nixBase
+    elif currentSystemInfo == 'nt':
+        base = winBase
+    else:
+        print "Unknown system.. (Neither posix nor nt)"
+        exit(1)
+    return base
+
 
 
 def CV_RanFor(data, L, y):

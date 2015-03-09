@@ -8,15 +8,38 @@ The class for feature collection
 import commonLib
 from enum import Enum
 import os
+import sys
+from time import sleep
+from progressBar import *
 
 DEBUG = False
+
+'''
+# of subroutines: 
+	.text:[0-9A-F]{8}(\s+)sub_
+	S U B R O U T I N E
+# of blocks
+	.text:[0-9A-F]{8}(\s+)loc_
+# of function calls
+	.text:[A-F0-9]{8}.+call(\s+)sub_
+ .idata:[A-F0-9]{8}.+extrn
+Call types
+	.text:[A-F0-9]{8}.+__cdecl sub_
+	.text:[A-F0-9]{8}.+__stdcall sub_
+	.text:[A-F0-9]{8}.+__fastcall sub_ (?)
+Others
+    AsmByteCount.py
+    AsmLength.py
+    entropyGraph.py
+    more..
+'''
 
 Feature = Enum('Feature', 'antidebugging alteration backdoor com encoding encryption filesystem \
                             hashdump infogathering injection kernelmsg keystroke mutex nativeAPI \
                             networking newprocess readmemory registry resource screencapture service shell')
 
 antidebugging = ['CheckRemoteDebuggerPresent', 'FindWindow', 'IsDebuggerPresent', \
-                'OutputDebugString', 'QueryPerformanceCounter', 'GetTickCount', 'NtQueryInformationProcess']
+                'OutputDebugString', 'QueryPerformanceCounter', 'GetTickCount', 'NtQueryInformationProcess', 'rdtsc']
 alteration = ['NetScheduleJobAdd', 'SetFileTime', 'SfcTerminateWatcherThread']
 backdoor = ['ConnectNamedPipe']
 com = ['CoCreateInstance', 'DllCanUnloadNow', 'DllGetClassObject', 'DllInstall', \
@@ -51,29 +74,32 @@ resource = ['FindResource', 'LoadResource']
 screencapture = ['BitBlt', 'GetDC']
 service = ['ControlService', 'CreateService', 'StartService', 'OpenSCManager', 'StartServiceCtrlDispatcher']
 shell = ['PeekNamedPipe']
+
+# 22 Features to describe malware techinques in use
+techniques = [antidebugging, alteration, backdoor, com, encoding, encryption, filesystem, \
+              hashdump, infogathering, injection, kernelmsg, keystroke, mutex, nativeAPI, \
+              networking, newprocess, readmemory, registry, resource, screencapture, service, shell]
     
 # Long Instructions  
 #   [Ex] :004011DB 81 3D 84 79 40 00
-pLongIns = ':[0-9A-F]{8}[\s]([0-9A-F][0-9A-F][\s\t]){10,16}'
-
+pLongIns = '.+:[0-9A-F]{8}[\s]([0-9A-F][0-9A-F][\s\t]){10,16}'
 # Short unidentified data
 #   [Ex] (db    0) or (db 03dh)
-pShortIns = '[\s\t]db\s[0-9A-F\s][0-9A-F\s][0-9A-F\s][\dh$]'
+unidentifiedData = '[\s\t]db\s[0-9A-F\s][0-9A-F\s][0-9A-F\s][\dh$]'
 
-subroutine = 'S U B R O U T I N E'
+# Some useful identifiers
+imports = 'Imports from.+dll'
+subroutines1 = 'S U B R O U T I N E'
+subroutines2 = '[0-9A-F]{8}(\s+)sub_.+endp'
+blocks = '[0-9A-F]{8}(\s+)loc_'
+userFunctionCalls = '[A-F0-9]{8}.+call(\s+)sub_'
+importFunctionCalls ='[A-F0-9]{8}.+extrn'
+dll = '(dllMain|DllEntryPoint)'
 
-winBase = 'E:\\MS_Malware_Classification_Challenge\\'
-nixBase = '/media/Koo/MS_Malware_Classification_Challenge/'
-
-def getBase(currentSystemInfo):
-    if currentSystemInfo == 'posix':
-        base = nixBase
-    elif currentSystemInfo == 'nt':
-        base = winBase
-    else:
-        print "Unknown system.. (Neither posix nor nt)"
-        exit(1)
-    return base
+# This is one of WIN_Virus_Ramnit patterns
+# '83(\s)EC(\s)04(\s).+\r\n.+[A-F0-9]{8}(\s)6?.+pusha'
+ramnit1 = '83(\s)EC(\s)04(\s)'
+ramnit2 = '.+[A-F0-9]{8}(\s)6?.+pusha'
 
 def existYN(data):
     value = 'F'
@@ -90,48 +116,60 @@ def collectFeatures(fc, target):
     fileName = target.split(os.sep)[-1]
     label = target.split(os.sep)[-2]
     
-    # [F001] # of subroutines identified by IDA Pro
-    f001 = fc.checkFeature(subroutine)
+    # [F001-F004] Basic assembly charateristics
+    f001 = len(fc.getSections())
+    f002 = fc.checkFeature(pLongIns)
+    f003 = fc.checkFeature(unidentifiedData)
+    
+    # [F005-F008] Some useful identifiers
+    f004 = fc.checkFeature(imports)
+    f005 = fc.checkFeature(subroutines1)
+    f006 = fc.checkFeature(subroutines2)
+    f007 = fc.checkFeature(blocks)
+    f008 = fc.checkFeature(userFunctionCalls)
+    f009 = fc.checkFeature(importFunctionCalls)
+    
+    isDll = False
+    f010 = existYN(isDll)
+    if fc.checkFeature(dll) > 0:
+        isDll = True
+        f010 = existYN(isDll)
+    
+    isRamnIt = False
+    f011 = existYN(isRamnIt)
+    f011_1 = fc.checkFeature(ramnit1)
+    f011_2 = fc.checkFeature(ramnit2)
+    if f010 and f011_1 > 0 and f011_2 > 0:
+        isRamnIt = True
+        f011 = existYN(isRamnIt)
+     
     if DEBUG == True:
-        print "\t# of subroutines identified by IDA Pro: " + str(f001)
-    #print "\tsubroutines: %d" % (f001)
-    
-    # [F002-F004] Packing
-    isPacking = False
-    f002 = len(fc.getSections())
-    #f003 = fc.checkFeature(pLongIns, ['.text'])
-    #f004 = fc.checkFeature(pShortIns, ['.rdata', '.data'])
-    f003 = fc.checkFeature(pLongIns)
-    f004 = fc.checkFeature(pShortIns)
-    
-    if f002 > 10 or f003 > 100 or f004 > 500:
-        isPacking = True
-    
-    if DEBUG == True:
-        print "\tPacking: "+ str(isPacking)
-        print "\t\t# of sections: %d %s" % (f002, str(fc.getSections()))
-        print "\t\t# of long instructions in .text section(>=16B): " + str(f003)
-        print "\t\t# of short instructions in .rdata and .data section(<=2B): " + str(f004)
-    '''
-    print "\tpacking: %s (sections:%d, longIns:%d, shortIns:%d)" % (isPacking, f002, f003, f004)
-    if f002 > 0:
-        print "\t\t" + str(fc.getSections())
-    '''
-    #result = fileName + ',' + str(label) + ',' + str(f002)+ str(fc.getSections()) + ',' + existYN(isPacking) + '\n'
-    result = fileName.split('.asm')[0] + ',' + str(label) + ',' + str(f002) + ',' + existYN(isPacking) + ','
-    
-    
-    # [F005-F131]
-    techniques = [antidebugging, alteration, backdoor, com, encoding, encryption, filesystem, \
-                hashdump, infogathering, injection, kernelmsg, keystroke, mutex, nativeAPI, \
-                networking, newprocess, readmemory, registry, resource, screencapture, service, shell]
+        print "\t\t# of sections: %d %s" % (f001, str(fc.getSections()))
+        print "\t\t# of long instructions in .text section(>=16B): " + str(f002)
+        print "\t\t# of unidentified data in .rdata and .data section(<=2B): " + str(f003)
+        print "\t\t# of imports from IAT: " + str(f004)
+        print "\t\t# of subroutines (IDA): " + str(f005)
+        print "\t\t# of subroutines (sub_): " + str(f006)
+        print "\t\t# of blocks (loc_): " + str(f007)
+        print "\t\t# of user function calls (call loc_): " + str(f008)
+        print "\t\t# of import function calls (extrn): " + str(f009)
+        print "\t\tDLL? " + str(f010)
+        print "\t\tpusha? " + str(f011)
+
+    result = fileName.split('.asm')[0] + ',' + str(label) + ',' + str(f001) + ',' + \
+            str(f002) + ',' + str(f003) + ',' + str(f004) + ',' + str(f005) + ',' + \
+            str(f006) + ',' + str(f007) + ',' + str(f008) + ',' + str(f009) + ',' + \
+            str(f010) + ',' + str(f011) + ','
+            
+    resultDetails = result
+
     tIndex = 0
     for technique in techniques:
         total = 0
         isFeature = False
         for s in technique:
-            #cnt = fc.checkFeature(s, ['.text', '.idata'])
             cnt = fc.checkFeature(s)
+            resultDetails += str(cnt) + ','
             #print "%s|%s|%d" % (Feature.__members__.keys()[tIndex], s, cnt)
             #resultFile.write(fileName + "|" + Feature.__members__.keys()[tIndex] + "|" + s + "|" + str(cnt) + '\n')
             if DEBUG == True:
@@ -143,16 +181,15 @@ def collectFeatures(fc, target):
         result += existYN(isFeature) + ','
         tIndex += 1
     
+    return (result[:-1] + '\n', resultDetails[:-1] + '\n')
+
     
-    return result[:-1] + '\n'
-    
-        
 if __name__ == '__main__':
     
-    dataBase = getBase(os.name)
+    dataBase = commonLib.getBase(os.name)
     trainDir = dataBase + 'train' + os.sep
-    testDir = dataBase + 'test' + os.sep
-    featureResult = dataBase + 'feature' + os.sep + 'results.txt'
+    featureResult1 = dataBase + 'feature' + os.sep + 'feature_results.csv'
+    featureResult2 = dataBase + 'feature' + os.sep + 'feature_results_details.csv'
     trainLabels = range(1,10)
     
     targets = []
@@ -160,19 +197,42 @@ if __name__ == '__main__':
         for tr in os.listdir(trainDir + str(trainLabel)):
             trFile = trainDir + str(trainLabel) + os.sep + tr
             fileSize = os.stat(trFile).st_size
-            if tr.endswith('asm') and fileSize < 500000L: #and (fileSize >= 500000L and fileSize < 1000000L):
+            if tr.endswith('asm') and fileSize < 5000000L: #and fileSize >= 5000000L:
                 targets.append(trFile)
     
-    resultFile = open(featureResult, 'w')
-    resultFile.write('filename, label, sections, packing, antidebugging, alteration, backdoor, com, encoding, encryption, filesystem, hashdump, infogathering, injection, kernelmsg, keystroke, mutex, nativeAPI, networking, newprocess, readmemory, registry, resource, screencapture, service, shell\n')
-    print "Total targets: %d" % (len(targets))
+    #targets = [trainDir + os.sep + '1' + os.sep + '0iS3pwlgJco8XORD4TLq.asm']
+    totalTarget = len(targets)
+    resultFile1 = open(featureResult1, 'w')
+    resultFile2 = open(featureResult2, 'w')
     
-    cnt = 1
+    category1 = 'malware, label, sections, longIns, unidentifiedData, imports, subRoutines, sub_, blocks, userfuncalls, importfuncalls, dll, pusha, '
+    category2 = 'antidebugging, alteration, backdoor, com, encoding, encryption, filesystem, hashdump, infogathering, injection, kernelmsg, keystroke, mutex, nativeAPI, networking, newprocess, readmemory, registry, resource, screencapture, service, shell\n'
+    category3 = ''
+    
+    tIndex = 0
+    for technique in techniques:
+        for s in technique:
+            tech = Feature.__members__.keys()[tIndex]
+            category3 += tech[:3] + '_' + s + ','
+        tIndex += 1
+    
+    category3 = category3[:-1] + '\n'
+    
+    resultFile1.write(category1 + category2)
+    resultFile2.write(category1 + category3)
+    print "Total targets: %d" % (totalTarget)
+    
+    cnt = 0
+    progress = progressBar(0, totalTarget, 50)
     for target in targets:
         fc = commonLib.FeatureCollector(target)
-        print "[%04d] Processing... %s" % (cnt, target)
-        resultFile.write(collectFeatures(fc, target))
+        #print "[%04d] Processing... %s" % (cnt, target)
+        (results, resultDetails) = collectFeatures(fc, target)
+        resultFile1.write(results)
+        resultFile2.write(resultDetails)
         cnt += 1
+        progress(cnt)
+        sleep(0.1)
         
-    resultFile.close()
-    print "Total targets: %d" % (len(targets))
+    resultFile1.close()
+    resultFile2.close()
